@@ -150,10 +150,10 @@ namespace NPacMan.SharedUi.Map
                                 }
                             }
 
-                            if (y < _height - 2)
+                            if (y < _height - 3)
                             {
                                 var gap = cell.CellBelow;
-                                if (gap.IsSpace && TunnelPattern(gap.CellAbove) == 'H')
+                                if (gap.IsSpace && TunnelPattern(gap.CellBelow) == 'H')
                                 {
                                     gap.BasicType = BasicMapPiece.Portal;
                                 }
@@ -171,7 +171,7 @@ namespace NPacMan.SharedUi.Map
                                 }
                             }
 
-                            if (x < _width - 2)
+                            if (x < _width - 3)
                             {
                                 var gap = cell.CellRight;
                                 if (gap.IsSpace && TunnelPattern(gap.CellRight) == 'V')

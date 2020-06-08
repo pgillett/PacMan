@@ -21,6 +21,9 @@ namespace NPacMan.UI
         private readonly RadioButton _addGhostHouse;
         private readonly RadioButton _addFruit;
 
+        private readonly GraphicsBuffers _graphicsBuffers;
+        private readonly BoardRenderer _boardRenderer;
+
         public Form1()
         {
             InitializeComponent();
@@ -48,6 +51,11 @@ namespace NPacMan.UI
             this.Text = "PacMan Designer";
             this.WindowState = FormWindowState.Maximized;
 
+            _graphicsBuffers = new GraphicsBuffers(this) { ShowFps = false };
+            _boardRenderer = new BoardRenderer();
+
+            this.Resize += RedrawOnResize;
+
             this.Click += Form1_Click;
         }
 
@@ -67,20 +75,27 @@ namespace NPacMan.UI
 
         private void Form1_Click(object? sender, EventArgs e)
         {
-            var pixelX = MousePosition.X;
-            var pixelY = MousePosition.Y;
+            var me = (MouseEventArgs) e;
+            var pixelX = me.X;
+            var pixelY = me.Y;
 
-            var graphicsBuffers = new GraphicsBuffers(this) { ShowFps = false };
-            graphicsBuffers.CalculateOffsets(_currentDesign.Width, _currentDesign.Height + 5);
+//            _graphicsBuffers.CalculateOffsets(_currentDesign.Width, _currentDesign.Height + 5);
 
-            var x = (int)((pixelX - graphicsBuffers.OffsetX) / 8) - 2;
-            var y = (int)((pixelY - graphicsBuffers.OffsetY) / 8) - 3 - 12;
+            var x = _graphicsBuffers.CellX(pixelX);
+            var y = _graphicsBuffers.CellY(pixelY) - 3;
 
-            MessageBox.Show($"{x}, {y}");
+        //    var x = (int)((pixelX - _graphicsBuffers.OffsetX) / 8) - 2;
+        //    var y = (int)((pixelY - _graphicsBuffers.OffsetY) / 8) - 3 - 12;
+
+        //    MessageBox.Show($"{pixelX}, {pixelY} => {x}, {y}");
 
             try
             {
-                if (_addCoin.Checked)
+                if ((me.Button & MouseButtons.Right) != 0)
+                {
+                    _currentDesign.Clear(x, y);
+                }
+                else if (_addCoin.Checked)
                 {
                     _currentDesign.AddCoin(x, y);
                 }
@@ -98,20 +113,21 @@ namespace NPacMan.UI
             catch (Exception)
             {
             }
-
-
         }
 
         private void DisplayBoard()
         {
             var game = new Game.Game(new GameClock(), _currentDesign.GameSettingsForDesign());
 
-            var boardRenderer = new BoardRenderer();
-            boardRenderer.RenderStart(game);
+            _boardRenderer.RenderStart(game);
 
-            var graphicsBuffers = new GraphicsBuffers(this) { ShowFps = false };
-            graphicsBuffers.RenderBackgroundUpdate(boardRenderer);
-            graphicsBuffers.RenderBackgroundUpdate(boardRenderer);
+            _graphicsBuffers.RenderBackgroundUpdate(_boardRenderer);
+//            _graphicsBuffers.RenderBackgroundUpdate(_boardRenderer);
+        }
+
+        private void RedrawOnResize(object? obj, EventArgs e)
+        {
+            _graphicsBuffers.RenderBackgroundUpdate(_boardRenderer);
         }
 
         private void Form1_Load(object sender, EventArgs e)

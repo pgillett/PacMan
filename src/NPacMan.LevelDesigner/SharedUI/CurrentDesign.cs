@@ -130,5 +130,9 @@ namespace NPacMan.LevelDesigner
         {
             _board[x, y] = 'F';
         }
+        internal void Clear(int x, int y)
+        {
+            _board[x, y] = ' ';
+        }
     }
 }

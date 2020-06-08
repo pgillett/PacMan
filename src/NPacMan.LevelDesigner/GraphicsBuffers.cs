@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.IO;
+using System.Runtime.InteropServices.WindowsRuntime;
 using System.Windows.Forms;
 using NPacMan.SharedUi;
 using NPacMan.SharedUi.Properties;
@@ -41,6 +42,8 @@ namespace NPacMan.UI
 
         public float OffsetX { get; private set; }
         public float OffsetY { get; private set; }
+
+        public float Scale { get; private set; }
 
 
         public GraphicsBuffers(Form forms)
@@ -132,15 +135,28 @@ namespace NPacMan.UI
             return _backgroundGraphics;
         }
 
-        public void CalculateOffsets(int width, int height)
+        public int CellX(int pixelX)
         {
-            // Scale to fit, with aspect ratio
-            var scale = Math.Min((float)_formSize.Width / width,
-                                 (float)_formSize.Height / height);
+            return (int) Math.Floor((pixelX - OffsetX) / (Scale * PixelGrid));
+        }
 
-            // Centre in the form
-            OffsetX = (_formSize.Width - width * scale) / 2;
-            OffsetY = (_formSize.Height - height * scale) / 2;
+        public int CellY(int pixelY)
+        {
+            return (int) Math.Floor((pixelY - OffsetY) / (Scale * PixelGrid));
+        }
+
+        private void CalculateOffsets()
+        {
+            if(_gameBuffer!=null)
+            {
+                // Scale to fit, with aspect ratio
+                Scale = Math.Min((float) _formSize.Width / _gameBuffer.Width,
+                    (float) _formSize.Height / _gameBuffer.Height);
+
+                // Centre in the form
+                OffsetX = (_formSize.Width - _gameBuffer.Width * Scale) / 2;
+                OffsetY = (_formSize.Height - _gameBuffer.Height * Scale) / 2;
+            }
         }
 
         /// <summary>
@@ -152,13 +168,10 @@ namespace NPacMan.UI
 
             if (_screenGraphics != null && _gameBuffer != null)
             {
-                CalculateOffsets(_gameBuffer.Width, _gameBuffer.Height);
-
-                var scale = Math.Min((float)_formSize.Width / _gameBuffer.Width,
-                        (float)_formSize.Height / _gameBuffer.Height);
-
+                CalculateOffsets();
+                
                 _screenGraphics.DrawImage(_gameBuffer,
-                    new RectangleF(OffsetX, OffsetY, _gameBuffer.Width * scale, _gameBuffer.Height * scale),
+                    new RectangleF(OffsetX, OffsetY, _gameBuffer.Width * Scale, _gameBuffer.Height * Scale),
                     new RectangleF(0, 0, _gameBuffer.Width, _gameBuffer.Height),
                     GraphicsUnit.Pixel);
 
