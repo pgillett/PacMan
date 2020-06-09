@@ -20,6 +20,7 @@ namespace NPacMan.Game
                 _ => throw new NotImplementedException($"No map for InitialGameStatus '{settings.InitialGameStatus}")
             };
             Score = 0;
+            Level = 1;
             GhostsVisible = true;
             TimeToChangeState = null;
             RemainingCoins = new List<CellLocation>(settings.Coins);
@@ -28,11 +29,13 @@ namespace NPacMan.Game
             Ghosts = settings.Ghosts.ToDictionary(x => x.Name, x => x);
         }
 
-        public string Status { get; set; } = null!;
+        public string Status { get; set; }
 
         public DateTime? TimeToChangeState { get;private set; }
 
         public int Lives { get; private set; }
+
+        public int Level { get; private set; }
 
         public bool GhostsVisible { get; private set; }
 
@@ -43,6 +46,7 @@ namespace NPacMan.Game
         public int TickCounter => _tickCounter;
 
         private int _tickCounter;
+
         private DateTime? _fruitVisibleUntil;
 
         public IReadOnlyCollection<CellLocation> RemainingCoins { get; private set; }
@@ -54,6 +58,8 @@ namespace NPacMan.Game
         public PacMan PacMan { get; private set; }
 
         public bool FruitVisible => LastTick <= _fruitVisibleUntil;
+
+        public FruitType FruitTypeToShow { get; private set; }
 
         internal void RemoveCoin(CellLocation location)
         {
@@ -67,6 +73,15 @@ namespace NPacMan.Game
             // Note - this is not the same as gameState.RemainingPowerPills = gameState.RemainingPowerPills.Remove(location)
             // We have to allow for the UI to be iterating over the list whilst we are removing elements from it.
             RemainingPowerPills = RemainingPowerPills.Where(p => p != location).ToList();
+        }
+
+        internal void ReplaceCoins(IReadOnlyCollection<CellLocation> coins)
+        {
+            RemainingCoins = coins;
+        }
+        internal void ReplacePowerPills(IReadOnlyCollection<CellLocation> powerPills)
+        {
+            RemainingPowerPills = powerPills;
         }
 
         internal void HideFruit()
@@ -99,15 +114,22 @@ namespace NPacMan.Game
             GhostsVisible = false;
         }
 
-        internal void ShowFruit(int showForSeconds)
+        internal void ShowFruit(int showForSeconds, FruitType fruitToShow)
         {
             _fruitVisibleUntil = LastTick.AddSeconds(showForSeconds);
+            FruitTypeToShow = fruitToShow;
         }
+        
         internal void RecordLastTick(DateTime now)
         {
             Interlocked.Increment(ref _tickCounter);
 
             LastTick = now;
+        }
+
+        internal void IncrementLevel()
+        {
+            Level++;
         }
 
         internal void ChangeStateIn(int timeInSeconds)
@@ -138,9 +160,9 @@ namespace NPacMan.Game
             });
         }
 
-        internal void MovePacManHome()
+        internal void ReplacePacMan(PacMan pacMan)
         {
-            PacMan = PacMan.SetToHome();
+            PacMan = pacMan;
         }
 
         internal void ChangeDirectionOfPacMan(Direction direction)
@@ -149,6 +171,11 @@ namespace NPacMan.Game
             {
                 PacMan = PacMan.WithNewDirection(direction);
             }
+        }
+
+        internal bool IsLevelComplete()
+        {
+            return RemainingCoins.Count == 0 && RemainingPowerPills.Count == 0;
         }
     }
 }

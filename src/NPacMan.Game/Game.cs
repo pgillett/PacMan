@@ -21,9 +21,6 @@ namespace NPacMan.Game
 
         private readonly InstanceLift<GameStateMachine> _gameStateMachineInstance;
 
-        private readonly IReadOnlyCollection<CellLocation> _walls;
-        public int TickCounter { get;private set; }
-
         public Game(IGameClock gameClock, IGameSettings settings)
         {
             _gameClock = gameClock;
@@ -32,7 +29,8 @@ namespace NPacMan.Game
             var gameState = new GameState(settings);
             _gameState = gameState;
             _gameStateMachineInstance = _gameStateMachine.CreateInstanceLift(gameState);
-            _walls = _settings.Walls.Union(_settings.Doors).ToList().AsReadOnly();
+            Walls = _settings.Walls.Union(_settings.Doors).ToList().AsReadOnly();
+            _fruitForLevel = new[] { new Fruit(_settings.Fruit, FruitType.Cherry) };
         }
 
         public Game StartGame()
@@ -65,8 +63,7 @@ namespace NPacMan.Game
         public IReadOnlyCollection<CellLocation> PowerPills
             => _gameState.RemainingPowerPills;
 
-        public IReadOnlyCollection<CellLocation> Walls
-            => _walls;
+        public IReadOnlyCollection<CellLocation> Walls { get; }
 
         public IReadOnlyCollection<CellLocation> Doors
             => _settings.Doors;
@@ -87,6 +84,9 @@ namespace NPacMan.Game
             => _gameState.Lives;
 
         public int Score => _gameState.Score;
+
+        public int Level => _gameState.Level;
+
         public PacMan PacMan => _gameState.PacMan;
 
         public IReadOnlyDictionary<string, Ghost> Ghosts
@@ -103,12 +103,30 @@ namespace NPacMan.Game
             nameof(GameStateMachine.Dying) => GameStatus.Dying,
             nameof(GameStateMachine.Respawning) => GameStatus.Respawning,
             nameof(GameStateMachine.Dead) => GameStatus.Dead,
+            nameof(GameStateMachine.ChangingLevel) => GameStatus.ChangingLevel,
             _ => throw new NotImplementedException($"No map for status '{_gameState.Status}'")
         };
 
-        public Fruit[] Fruits =>
-            _gameState.FruitVisible ?
-            new []{new Fruit(_settings.Fruit, FruitType.Cherry)} : Array.Empty<Fruit>();
+        public Fruit[] Fruits 
+        {
+            get 
+            {
+                if (_gameState.FruitVisible)
+                {
+                    if (_fruitForLevel[0].Type != _gameState.FruitTypeToShow)
+                    {
+                        _fruitForLevel[0] = new Fruit(_settings.Fruit, _gameState.FruitTypeToShow);
+                    }
+                    return _fruitForLevel;                        
+                }   
+                else
+                {
+                    return Array.Empty<Fruit>();;
+                }                 
+            }
+        }
+
+        private readonly Fruit[] _fruitForLevel;
 
         private async Task Tick(DateTime now)
         {

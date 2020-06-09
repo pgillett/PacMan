@@ -28,6 +28,12 @@ namespace NPacMan.Game
                 When(Tick, context => context.Data.Now >= context.Instance.TimeToChangeState)
                     .TransitionTo(GhostChase));
 
+            During(ChangingLevel,
+                When(Tick, context => context.Data.Now >= context.Instance.TimeToChangeState)
+                    .TransitionTo(Scatter));
+
+            WhenLeave(ChangingLevel, binder => binder.Then(context => Actions.GetReadyForNextLevel(context.Instance, settings)));
+            
             WhenEnter(GhostChase,
                        binder => binder
                             .Then(context => context.Instance.ChangeStateIn(settings.ChaseTimeInSeconds))
@@ -49,18 +55,30 @@ namespace NPacMan.Game
                     .ThenAsync(async context => await Actions.MoveGhosts(game, context.Instance, context, this))
                     .ThenAsync(async context => await Actions.MovePacMan(game, context.Instance, context, this, settings)),
                 When(CoinCollision)
-                    .Then(context => Actions.CoinEaten(game, settings, context.Instance, context.Data.Location, gameNotifications)),
+                    .Then(context => Actions.CoinEaten(game, settings, context.Instance, context.Data.Location, gameNotifications))
+                    .If(context => context.Instance.IsLevelComplete(), 
+                            binder => binder.TransitionTo(ChangingLevel)),
                 When(FruitCollision)
                     .Then(context => Actions.FruitEaten(game, settings, context.Instance, context.Data.Location, gameNotifications)),
                 When(PowerPillCollision)
-                    .Then(context => context.Instance.ChangeStateIn(settings.FrightenedTimeInSeconds))
                     .Then(context => Actions.PowerPillEaten(settings, context.Instance, context.Data.Location, gameNotifications))
-                    .TransitionTo(Frightened),
+                    .IfElse(context => context.Instance.IsLevelComplete(), 
+                            binder => binder.TransitionTo(ChangingLevel),
+                        binder =>
+                            binder.Then(context => context.Instance.ChangeStateIn(settings.FrightenedTimeInSeconds))
+                                .TransitionTo(Frightened)),
                 When(GhostCollision)
                     .IfElse(x => x.Data.Ghost.Edible,
                     binder => binder.Then(context => Actions.GhostEaten(context.Instance, context.Data.Ghost, game, gameNotifications)),
                     binder => binder.Then(context => Actions.EatenByGhost(context.Instance))
                                     .TransitionTo(Dying))); 
+
+
+            WhenEnter(ChangingLevel,
+                       binder => binder
+                                .Then(context => context.Instance.HideGhosts())
+                                .Then(context => context.Instance.ChangeStateIn(4)));
+
 
             WhenEnter(Dying,
                        binder => binder
@@ -80,12 +98,12 @@ namespace NPacMan.Game
 
             During(Respawning,
                 When(Tick, context => context.Data.Now >= context.Instance.TimeToChangeState)
-                    .Then(context => Actions.CompleteRespawning(context.Instance))
-                    .TransitionTo(GhostChase));
+                    .Then(context => Actions.CompleteRespawning(context.Instance, settings))
+                    .TransitionTo(Scatter));
 
             During(Dead, Ignore(Tick));
 
-            During(Dying, Respawning, Dead,
+            During(Dying, Respawning, Dead, ChangingLevel,
                     Ignore(PlayersWishesToChangeDirection),
                     Ignore(CoinCollision),
                     Ignore(PowerPillCollision),
@@ -98,6 +116,7 @@ namespace NPacMan.Game
         public State Dying { get; private set; } = null!;
         public State Respawning { get; private set; } = null!;
         public State Dead { get; private set; } = null!;
+        public State ChangingLevel { get; private set; } = null!;
         public Event<Tick> Tick { get; private set; } = null!;
         public Event<GhostCollision> GhostCollision { get; private set; } = null!;
         public Event<CoinCollision> CoinCollision { get; private set; } = null!;

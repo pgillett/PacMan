@@ -1,9 +1,11 @@
-﻿using System;
-using System.Diagnostics;
-using NPacMan.SharedUi.Properties;
-using NPacMan.UI.Audio;
+﻿using NPacMan.SharedUi.Properties;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.JSInterop;
 
-namespace NPacMan.UI
+namespace NPacMan.Blazor
 {
     public class SoundSet
     {
@@ -18,34 +20,28 @@ namespace NPacMan.UI
 
         private DateTime _nextSound;
 
-        private readonly AudioPlaybackEngine _audioPlaybackEngine;
+        private readonly IJSRuntime _jsRuntime;
 
-        public SoundSet()
+        public SoundSet(IJSRuntime jsRuntime)
         {
-            // Each sound has two parameters
-            // Length (in milliseconds)
-            // Whether the sound can interrupt the current sound
+            _eatFruit = new Sound(jsRuntime, Resources.pacman_eatfruit, 0, 1000, true);
+            _chomp1 = new Sound(jsRuntime, Resources.pacman_chomp1, 1, 120, false);
+            _chomp2 = new Sound(jsRuntime, Resources.pacman_chomp2, 2, 120, false);
+            _death = new Sound(jsRuntime, Resources.pacman_death, 3, 2000, true);
+            _beginning = new Sound(jsRuntime, Resources.pacman_beginning, 4, 4000, true);
+            _intermission = new Sound(jsRuntime, Resources.pacman_intermission, 5, 1000, true);
+            _extraPac = new Sound(jsRuntime, Resources.pacman_extrapac, 6, 500, true);
+            _eatGhost = new Sound(jsRuntime, Resources.pacman_eatghost, 7, 1000, true);
 
-            _eatFruit = new Sound(Resources.pacman_eatfruit, 1000, true);
-            _chomp1 = new Sound(Resources.pacman_chomp1, 120, false);
-            _chomp2 = new Sound(Resources.pacman_chomp2, 120, false);
-            _death = new Sound(Resources.pacman_death, 2000, true);
-            _beginning = new Sound(Resources.pacman_beginning, 4000, true);
-            _intermission = new Sound(Resources.pacman_intermission, 1000, true);
-            _extraPac = new Sound(Resources.pacman_extrapac, 500, true);
-            _eatGhost = new Sound(Resources.pacman_eatghost, 1000, true);
-
-            _nextSound = DateTime.Now;
-
-            _audioPlaybackEngine = new AudioPlaybackEngine(11025, 1);
+            _jsRuntime = jsRuntime;
         }
 
         private void Play(Sound sound)
         {
-            if (DateTime.Now > _nextSound || sound.Interrupt)
+            if (DateTime.Now > _nextSound || sound.CanInterrupt)
             {
+                _jsRuntime.InvokeVoidAsync("PlaySound", sound.Number);
                 _nextSound = DateTime.Now.Add(sound.RepeatTime);
-                _audioPlaybackEngine.PlaySound(sound.SoundSource);
             }
         }
 
